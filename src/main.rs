@@ -224,7 +224,6 @@ pub fn autoclicker_thread(go: Arc<Mutex<bool>>,
     loop {
         if *go.lock().unwrap(){
             // Increment repeated counter
-            println!("Var: {}","hi"); //? debug, .i truncating, {b,o,x,X} different bases, {<w, >w} alignment, # prettify
             *times_repeated.lock().unwrap() += 1;
             // Click
             click(&v,spam_key.lock().unwrap().clone(),interval_hold_ms.lock().unwrap().clone());
