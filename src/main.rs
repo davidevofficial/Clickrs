@@ -51,7 +51,7 @@ fn main() -> eframe::Result {
 
             ui.heading("Clickrs @ DavidevOfficial @ 2025");
             ui.add_space(20.0);
-            ui.label( frame_n.to_string());
+            // ui.label( frame_n.to_string());
 
             ui.label("Click Interval");
             ui.separator();
