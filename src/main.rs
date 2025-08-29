@@ -143,7 +143,7 @@ fn main() -> eframe::Result {
                     else { *interval_hold_ms.lock().unwrap() = str.parse().expect("Invalid Interval Time"); }
                 });
                 columns[1].horizontal(|ui|{
-                    ui.label("Release Interval (+/- ms):");
+                    ui.label("Random Interval (+/- ms):");
                     let str = *interval_random_delta.lock().unwrap();
                     let mut str = String::from(str.to_string());
                     ui.text_edit_singleline(&mut str);
