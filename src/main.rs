@@ -1,4 +1,5 @@
 use eframe::egui;
+use std::sync::{Arc, Mutex};
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([750.0, 500.0]),
@@ -25,15 +26,15 @@ fn main() -> eframe::Result {
     // let mut age = 42;
     let mut frame_n = 0;
     let mut start = false;
-    let clicker = create_device();
+    let go = Arc::new(Mutex::new(false));
+    // let clicker = create_device();
     let mut devices = get_devices();
     let mut key_pressed: Vec<evdev_rs::InputEvent> = Vec::new();
     // End of application state
 
     eframe::run_simple_native("Clickrs", options, move |ctx, _frame| {
-
+        key_pressed = get_key_pressed(&devices);
         egui::CentralPanel::default().show(ctx, |ui| {
-            key_pressed = get_key_pressed(&devices);
             ctx.style_mut(|style|{
                 style.override_font_id = Some(egui::FontId::proportional(24.0)); // 24 pt size globally
             });
@@ -83,7 +84,7 @@ fn main() -> eframe::Result {
                         //Insert get key logic
                         if key_pressed.len() > 0{
                             for x in &key_pressed{
-                                if x.is_type(&EventType::EV_KEY){
+                                if x.is_type(&EventType::EV_KEY) && x.value == 1{
                                     activation_key = x.event_code;
                                     recording_act = false;
                                 }
@@ -105,7 +106,7 @@ fn main() -> eframe::Result {
                         //Insert get key logic
                         if key_pressed.len() > 0{
                             for x in &key_pressed{
-                                if x.is_type(&EventType::EV_KEY){
+                                if x.is_type(&EventType::EV_KEY) && x.value == 1{
                                     spam_key = x.event_code;
                                     recording_spam = false;
                                 }
@@ -151,12 +152,51 @@ fn main() -> eframe::Result {
                     start = false;
                 }
             });
-            if start == false{times_to_repeat = 0;}
+            // if start == false{times_to_repeat = 0;}
         });
         ctx.request_repaint();
+
+
+        // If Activation key is pressed and hold is false change the state
+        if key_pressed.len() > 0 && hold == false{
+            for x in &key_pressed{
+                if x.is_type(&EventType::EV_KEY) && x.value == 1{
+                    if x.event_code == activation_key{
+                        start = !start;
+                    }
+                }
+            }
+        }
+        // While activation key is held start is true
+        if key_pressed.len() > 0 && hold == true{
+            for x in &key_pressed{
+                if x.is_type(&EventType::EV_KEY) && x.value > 0{
+                    if x.event_code == activation_key{
+                        start = true;
+                    }
+                } else if x.is_type(&EventType::EV_KEY) && x.value == 0{
+                    if x.event_code == activation_key{
+                        start = false;
+                    }
+                }
+            }
+        }
         if frame_n % 600 == 0{
             //Refresh list of devices every 600 frames
             devices = get_devices();
+        }
+        // Reset Clicker when it has hit enough keys
+        if times_repeated == times_to_repeat && times_to_repeat != 0{
+            start = false;
+            times_repeated = 0;
+        }
+        if start == true && (times_to_repeat == 0 || times_to_repeat > times_repeated){
+            times_repeated += 1;
+            println!("Insert Clicking Logic");
+            let mut t = interval_m*60000+interval_s*1000+interval_ms + get_random_number(interval_random_delta);
+            if t < 1{t=0}
+            let t = t as u64;
+            std::thread::sleep(std::time::Duration::from_millis(t));
         }
         frame_n += 1;
     })
