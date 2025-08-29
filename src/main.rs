@@ -8,13 +8,13 @@ fn main() -> eframe::Result {
 
     // Our application state:
     // Interval
-    let mut interval_ms = 50;
-    let mut interval_s = 0;
-    let mut interval_m = 0;
-    let mut interval_hold_ms = 0; //ms to hold a button
-    let mut interval_random_delta = 0; // +- interval in ms
+    let interval_ms = Arc::new(Mutex::new(50));
+    let interval_s = Arc::new(Mutex::new(0));
+    let interval_m = Arc::new(Mutex::new(0));
+    let interval_hold_ms = Arc::new(Mutex::new(0)); //ms to hold a button
+    let interval_random_delta = Arc::new(Mutex::new(0)); // +- interval in ms
     let mut times_to_repeat = 0;
-    let mut times_repeated = 0;
+    let times_repeated = Arc::new(Mutex::new(0));
     // Whether the clicker is toggable or heldable
     let mut hold = true;
     //Keys
@@ -31,6 +31,14 @@ fn main() -> eframe::Result {
     let mut devices = get_devices();
     let mut key_pressed: Vec<evdev_rs::InputEvent> = Vec::new();
     // End of application state
+    let go_clone = Arc::clone(&go);
+    let i_ms = Arc::clone(&interval_ms);
+    let i_s = Arc::clone(&interval_s);
+    let i_m = Arc::clone(&interval_m);
+    let i_h_ms = Arc::clone(&interval_hold_ms);
+    let i_r_d = Arc::clone(&interval_random_delta);
+    let t_r = Arc::clone(&times_repeated);
+    std::thread::spawn(move || autoclicker_thread(go_clone, i_ms, i_s, i_m, i_h_ms, i_r_d, t_r));
 
     eframe::run_simple_native("Clickrs", options, move |ctx, _frame| {
         key_pressed = get_key_pressed(&devices);
@@ -46,23 +54,25 @@ fn main() -> eframe::Result {
             ui.label("Click Interval");
             ui.separator();
             ui.columns(3, |columns|{
-
-                let mut s_m = String::from(interval_m.to_string());
+                let s_m = *interval_m.lock().unwrap();
+                let mut s_m = String::from(s_m.to_string());
                 columns[0].text_edit_singleline(&mut s_m);
-                if s_m == String::new(){ interval_m = 0; }
-                else { interval_m = s_m.parse().expect("Invalid Interval Time"); }
+                if s_m == String::new(){ *interval_m.lock().unwrap() = 0; }
+                else { *interval_m.lock().unwrap() = s_m.parse().expect("Invalid Interval Time"); }
                 columns[0].label("Minutes");
 
-                let mut s_s = String::from(interval_s.to_string());
+                let s_m = *interval_s.lock().unwrap();
+                let mut s_s = String::from(s_m.to_string());
                 columns[1].text_edit_singleline(&mut s_s);
-                if s_s == String::new(){ interval_s = 0; }
-                else { interval_s = s_s.parse().expect("Invalid Interval Time"); }
+                if s_s == String::new(){ *interval_s.lock().unwrap() = 0; }
+                else { *interval_s.lock().unwrap() = s_s.parse().expect("Invalid Interval Time"); }
                 columns[1].label("Seconds");
 
-                let mut s_ms = String::from(interval_ms.to_string());
+                let s_ms = *interval_ms.lock().unwrap();
+                let mut s_ms = String::from(s_ms.to_string());
                 columns[2].text_edit_singleline(&mut s_ms);
-                if s_ms == String::new(){ interval_ms = 0; }
-                else { interval_ms = s_ms.parse().expect("Invalid Interval Time"); }
+                if s_ms == String::new(){ *interval_ms.lock().unwrap() = 0; }
+                else { *interval_ms.lock().unwrap() = s_ms.parse().expect("Invalid Interval Time"); }
                 columns[2].label("Milliseconds");
 
             });
@@ -123,17 +133,19 @@ fn main() -> eframe::Result {
                 columns[1].separator();
                 columns[1].horizontal(|ui|{
                     ui.label("Release Key delay (ms):");
-                    let mut str = String::from(interval_hold_ms.to_string());
+                    let str = *interval_hold_ms.lock().unwrap();
+                    let mut str = String::from(str.to_string());
                     ui.text_edit_singleline(&mut str);
-                    if str == String::new(){ interval_hold_ms = 0; }
-                    else { interval_hold_ms = str.parse().expect("Invalid Interval Time"); }
+                    if str == String::new(){ *interval_hold_ms.lock().unwrap() = 0; }
+                    else { *interval_hold_ms.lock().unwrap() = str.parse().expect("Invalid Interval Time"); }
                 });
                 columns[1].horizontal(|ui|{
                     ui.label("Release Interval (+/- ms):");
-                    let mut str = String::from(interval_random_delta.to_string());
+                    let str = *interval_random_delta.lock().unwrap();
+                    let mut str = String::from(str.to_string());
                     ui.text_edit_singleline(&mut str);
-                    if str == String::new(){ interval_random_delta = 0; }
-                    else { interval_random_delta = str.parse().expect("Invalid Interval Time"); }
+                    if str == String::new(){ *interval_random_delta.lock().unwrap() = 0; }
+                    else { *interval_random_delta.lock().unwrap() = str.parse().expect("Invalid Interval Time"); }
                 });
                 columns[1].horizontal(|ui|{
                     ui.label("Times to repeat (0 = infinite):");
@@ -185,21 +197,40 @@ fn main() -> eframe::Result {
             //Refresh list of devices every 600 frames
             devices = get_devices();
         }
-        // Reset Clicker when it has hit enough keys
-        if times_repeated == times_to_repeat && times_to_repeat != 0{
+        // Stop Clicker when it has hit enough keys
+        if *times_repeated.lock().unwrap() >= times_to_repeat && times_to_repeat != 0{
             start = false;
-            times_repeated = 0;
+            *times_repeated.lock().unwrap() = 0;
         }
-        if start == true && (times_to_repeat == 0 || times_to_repeat > times_repeated){
-            times_repeated += 1;
-            println!("Insert Clicking Logic");
-            let mut t = interval_m*60000+interval_s*1000+interval_ms + get_random_number(interval_random_delta);
-            if t < 1{t=0}
-            let t = t as u64;
-            std::thread::sleep(std::time::Duration::from_millis(t));
-        }
+        // if start == true{
+        //     times_repeated += 1;
+        //     println!("Insert Clicking Logic");
+        //     let mut t = interval_m*60000+interval_s*1000+interval_ms + get_random_number(interval_random_delta);
+        //     if t < 1{t=0}
+        //     let t = t as u64;
+        //     std::thread::sleep(std::time::Duration::from_millis(t));
+        // }
+        if start{*go.lock().unwrap()=true;}else{*go.lock().unwrap()=false;}
         frame_n += 1;
     })
+}
+pub fn autoclicker_thread(go: Arc<Mutex<bool>>,
+                interval_ms: Arc<Mutex<i32>>,
+                interval_s: Arc<Mutex<i32>>,
+                interval_m: Arc<Mutex<i32>>,
+                interval_hold_ms: Arc<Mutex<i32>>,
+                interval_random_delta: Arc<Mutex<i32>>,
+                times_repeated: Arc<Mutex<i32>>,
+                ){
+    loop {
+        if *go.lock().unwrap(){
+            println!("Hi");
+            // Increment repeated counter
+            // Click
+            // Calculate Sleep amount and sleep and be ready to repeat
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
 }
 
 use rand::Rng;
