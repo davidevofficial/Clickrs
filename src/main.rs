@@ -19,7 +19,7 @@ fn main() -> eframe::Result {
     let mut hold = true;
     //Keys
     let mut activation_key = EventCode::EV_KEY(EV_KEY::KEY_F8);
-    let mut spam_key = EventCode::EV_KEY(EV_KEY::BTN_LEFT);
+    let spam_key = Arc::new(Mutex::new(EventCode::EV_KEY(EV_KEY::BTN_LEFT)));
     let mut recording_act = false;
     let mut recording_spam = false;
     // let mut name = "Arthur".to_owned();
@@ -38,7 +38,9 @@ fn main() -> eframe::Result {
     let i_h_ms = Arc::clone(&interval_hold_ms);
     let i_r_d = Arc::clone(&interval_random_delta);
     let t_r = Arc::clone(&times_repeated);
-    std::thread::spawn(move || autoclicker_thread(go_clone, i_ms, i_s, i_m, i_h_ms, i_r_d, t_r));
+    let spam_key = Arc::clone(&spam_key);
+
+    std::thread::spawn(move || autoclicker_thread(go_clone, i_ms, i_s, i_m, i_h_ms, i_r_d, t_r, spam_key));
 
     eframe::run_simple_native("Clickrs", options, move |ctx, _frame| {
         key_pressed = get_key_pressed(&devices);
@@ -108,7 +110,8 @@ fn main() -> eframe::Result {
                 columns[0].horizontal(|ui|{ //spam btn
                     ui.label("Spam Button: ");
                     if recording_spam == false{
-                        if ui.button(spam_key.to_string()).clicked(){
+                        let s = *spam_key.lock().unwrap();
+                        if ui.button(s.to_string()).clicked(){
                             recording_spam = true;
                         };
                     }
@@ -117,7 +120,7 @@ fn main() -> eframe::Result {
                         if key_pressed.len() > 0{
                             for x in &key_pressed{
                                 if x.is_type(&EventType::EV_KEY) && x.value == 1{
-                                    spam_key = x.event_code;
+                                    *spam_key.lock().unwrap() = x.event_code;
                                     recording_spam = false;
                                 }
                             }
@@ -221,12 +224,16 @@ pub fn autoclicker_thread(go: Arc<Mutex<bool>>,
                 interval_hold_ms: Arc<Mutex<i32>>,
                 interval_random_delta: Arc<Mutex<i32>>,
                 times_repeated: Arc<Mutex<i32>>,
+                spam_key: Arc<Mutex<EventCode>>,
+                
                 ){
     loop {
         if *go.lock().unwrap(){
             println!("Hi");
             // Increment repeated counter
+            *times_repeated.lock().unwrap() += 1;
             // Click
+
             // Calculate Sleep amount and sleep and be ready to repeat
         }
         std::thread::sleep(std::time::Duration::from_millis(1));
