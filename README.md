@@ -1,7 +1,9 @@
 # Clickrs
 Clickrs is an open-source, easy-to-use, GUI Autoclicker for linux desktops made in rust with [evdev_rs](https://github.com/ndesh26/evdev-rs "Link to evdev_rs github page") and [eframe](https://github.com/jackos/eframe "Link to eframe github page"), inspired by [xclicker](https://xclicker.xyz/ "Link to xclicker website")
 
-It aims to be fully compatible with wayland by using the low level evdev library and with plenty of options to customize your experience
+It aims to be fully compatible with wayland by using the low level evdev library and with plenty of options to customize your experience.
+
+**This program requires sudo because it reads the input from /dev/input/**
 
 # Features
 
