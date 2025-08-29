@@ -307,7 +307,6 @@ pub fn create_device() -> UInputDevice {
     u.set_bustype(BusType::BUS_USB as u16);
     u.set_vendor_id(0xabcd);
     u.set_product_id(0xefef);
-
     // Note mouse keys have to be enabled for this to be detected
     // as a usable device, see: https://stackoverflow.com/a/64559658/6074942
     u.enable(EventCode::EV_KEY(EV_KEY::BTN_LEFT)).unwrap();
@@ -315,8 +314,10 @@ pub fn create_device() -> UInputDevice {
 
     u.enable(EventCode::EV_REL(EV_REL::REL_X)).unwrap();
     u.enable(EventCode::EV_REL(EV_REL::REL_Y)).unwrap();
-    u.enable(EventType::EV_KEY).unwrap();
-    u.enable(EventType::EV_REL).unwrap();
+    // Enables all events of type EV_KEY
+    for code in EventCodeIterator::new(&EventType::EV_KEY){
+            u.enable(code).unwrap();
+    }
     u.enable(EventCode::EV_SYN(EV_SYN::SYN_REPORT)).unwrap();
 
     // Attempt to create UInputDevice from UninitDevice
