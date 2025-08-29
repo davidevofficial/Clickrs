@@ -38,9 +38,9 @@ fn main() -> eframe::Result {
     let i_h_ms = Arc::clone(&interval_hold_ms);
     let i_r_d = Arc::clone(&interval_random_delta);
     let t_r = Arc::clone(&times_repeated);
-    let spam_key = Arc::clone(&spam_key);
+    let s_key = Arc::clone(&spam_key);
 
-    std::thread::spawn(move || autoclicker_thread(go_clone, i_ms, i_s, i_m, i_h_ms, i_r_d, t_r, spam_key));
+    std::thread::spawn(move || autoclicker_thread(go_clone, i_ms, i_s, i_m, i_h_ms, i_r_d, t_r, s_key));
 
     eframe::run_simple_native("Clickrs", options, move |ctx, _frame| {
         key_pressed = get_key_pressed(&devices);
@@ -205,14 +205,7 @@ fn main() -> eframe::Result {
             start = false;
             *times_repeated.lock().unwrap() = 0;
         }
-        // if start == true{
-        //     times_repeated += 1;
-        //     println!("Insert Clicking Logic");
-        //     let mut t = interval_m*60000+interval_s*1000+interval_ms + get_random_number(interval_random_delta);
-        //     if t < 1{t=0}
-        //     let t = t as u64;
-        //     std::thread::sleep(std::time::Duration::from_millis(t));
-        // }
+
         if start{*go.lock().unwrap()=true;}else{*go.lock().unwrap()=false;}
         frame_n += 1;
     })
@@ -225,16 +218,21 @@ pub fn autoclicker_thread(go: Arc<Mutex<bool>>,
                 interval_random_delta: Arc<Mutex<i32>>,
                 times_repeated: Arc<Mutex<i32>>,
                 spam_key: Arc<Mutex<EventCode>>,
-                
+
                 ){
+    let v = create_device();
     loop {
         if *go.lock().unwrap(){
-            println!("Hi");
             // Increment repeated counter
+            println!("Var: {}","hi"); //? debug, .i truncating, {b,o,x,X} different bases, {<w, >w} alignment, # prettify
             *times_repeated.lock().unwrap() += 1;
             // Click
-
+            click(&v,spam_key.lock().unwrap().clone(),interval_hold_ms.lock().unwrap().clone());
             // Calculate Sleep amount and sleep and be ready to repeat
+            let mut t = *interval_m.lock().unwrap()*60000+*interval_s.lock().unwrap()*1000+*interval_ms.lock().unwrap() + get_random_number(*interval_random_delta.lock().unwrap());
+            if t < 1{t=0}
+            let t = t as u64;
+            std::thread::sleep(std::time::Duration::from_millis(t));
         }
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
@@ -317,7 +315,8 @@ pub fn create_device() -> UInputDevice {
 
     u.enable(EventCode::EV_REL(EV_REL::REL_X)).unwrap();
     u.enable(EventCode::EV_REL(EV_REL::REL_Y)).unwrap();
-
+    u.enable(EventType::EV_KEY).unwrap();
+    u.enable(EventType::EV_REL).unwrap();
     u.enable(EventCode::EV_SYN(EV_SYN::SYN_REPORT)).unwrap();
 
     // Attempt to create UInputDevice from UninitDevice
