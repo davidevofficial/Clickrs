@@ -1,4 +1,4 @@
-use eframe::egui;
+use eframe::egui::{self, Event};
 use std::sync::{Arc, Mutex};
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -220,13 +220,34 @@ pub fn autoclicker_thread(go: Arc<Mutex<bool>>,
                 spam_key: Arc<Mutex<EventCode>>,
 
                 ){
-    let v = create_device();
+    let k = create_device_key();
+    let m = create_device_mouse();
     loop {
         if *go.lock().unwrap(){
             // Increment repeated counter
             *times_repeated.lock().unwrap() += 1;
             // Click
-            click(&v,spam_key.lock().unwrap().clone(),interval_hold_ms.lock().unwrap().clone());
+            let x;
+            let s_key = spam_key.lock().unwrap().clone();
+            match s_key{
+                EventCode::EV_KEY(EV_KEY::BTN_LEFT) => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_RIGHT) => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_MIDDLE) => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_SIDE) => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_EXTRA) => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_1)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_2)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_3)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_4)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_5)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_6)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_7)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_8)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_9)   => {x = &m},
+                EventCode::EV_KEY(EV_KEY::BTN_0)   => {x = &m},
+                _ => x = &k,
+            }
+            click(&x,s_key.clone(),interval_hold_ms.lock().unwrap().clone());
             // Calculate Sleep amount and sleep and be ready to repeat
             let mut t = *interval_m.lock().unwrap()*60000+*interval_s.lock().unwrap()*1000+*interval_ms.lock().unwrap() + get_random_number(*interval_random_delta.lock().unwrap());
             if t < 1{t=0}
@@ -295,30 +316,56 @@ pub fn get_devices() -> Vec<evdev_rs::Device>{
     devices //return
 }
 
-pub fn create_device() -> UInputDevice {
+pub fn create_device_key() -> UInputDevice {
     // Create virtual device
     let u = UninitDevice::new().unwrap();
 
     // Setup device
     // per: https://01.org/linuxgraphics/gfx-docs/drm/input/uinput.html#mouse-movements
 
-    u.set_name("Clickrs");
+    u.set_name("Clickrs keyboard");
     u.set_bustype(BusType::BUS_USB as u16);
     u.set_vendor_id(0xabcd);
     u.set_product_id(0xefef);
     // Note mouse keys have to be enabled for this to be detected
     // as a usable device, see: https://stackoverflow.com/a/64559658/6074942
-    u.enable(EventCode::EV_KEY(EV_KEY::BTN_LEFT)).unwrap();
-    u.enable(EventCode::EV_KEY(EV_KEY::BTN_RIGHT)).unwrap();
-
-    u.enable(EventCode::EV_REL(EV_REL::REL_X)).unwrap();
-    u.enable(EventCode::EV_REL(EV_REL::REL_Y)).unwrap();
     // Enables all events of type EV_KEY
-    for code in EventCodeIterator::new(&EventType::EV_KEY){
-            u.enable(code).unwrap();
+    // Enable all other EV_KEY codes except BTN_LEFT
+    for code in EventCodeIterator::new(&EventType::EV_KEY) {
+        u.enable(code).unwrap();
     }
     u.enable(EventCode::EV_SYN(EV_SYN::SYN_REPORT)).unwrap();
+    // Attempt to create UInputDevice from UninitDevice
+    let v = UInputDevice::create_from_device(&u).unwrap();
+    v //return ;
+}
+pub fn create_device_mouse() -> UInputDevice {
+    // Create virtual device
+    let u = UninitDevice::new().unwrap();
 
+    // Setup device
+    // per: https://01.org/linuxgraphics/gfx-docs/drm/input/uinput.html#mouse-movements
+
+    u.set_name("Clickrs mouse");
+    u.set_bustype(BusType::BUS_USB as u16);
+    u.set_vendor_id(0xefef);
+    u.set_product_id(0xabcd);
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_LEFT)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_RIGHT)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_MIDDLE)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_SIDE)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_EXTRA)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_1)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_2)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_3)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_4)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_5)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_6)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_7)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_8)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_9)).unwrap();
+    u.enable(EventCode::EV_KEY(EV_KEY::BTN_0)).unwrap();
+    u.enable(EventCode::EV_SYN(EV_SYN::SYN_REPORT)).unwrap();
     // Attempt to create UInputDevice from UninitDevice
     let v = UInputDevice::create_from_device(&u).unwrap();
     v //return ;
