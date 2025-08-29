@@ -3,7 +3,7 @@ Clickrs is an open-source, easy-to-use, GUI Autoclicker for linux desktops made 
 
 It aims to be fully compatible with wayland by using the low level evdev library and with plenty of options to customize your experience.
 
-**This program requires sudo because it reads the input from /dev/input/**
+**This program requires root because it reads the input from /dev/input/ , so run with sudo**
 
 # Features
 
